@@ -44,6 +44,18 @@ The dataset contains nine CSV files covering customers, orders, order items, pay
 
 The original dataset files are stored locally in `data/raw/` and are not committed to Git.
 
+### Data Documentation
+
+The following documents provide detailed information about the dataset and its suitability for analysis:
+
+| Document | Description |
+|---|---|
+| [Data Dictionary](docs/data_dictionary.md) | Column-level descriptions, meanings, data types, and source information for all nine tables. |
+| [Excel Data Dictionary](docs/data_dictionary.xlsx) | Downloadable Excel version of the data dictionary, including sample values and missing-value percentages. |
+| [Dataset Provenance](docs/dataset_provenance.md) | Dataset source, license, download information, record counts, and historical coverage. |
+| [Field Availability](docs/field_availability.md) | Availability of important analytical fields and documented data limitations. |
+| [Delivery KPI Methodology](docs/delivery_kpi_methodology.md) | Definitions and calculation methods for delivery performance metrics. |
+
 ## 3. Technology Stack
 
 | Technology | Purpose |
