@@ -233,3 +233,6 @@ data/processed/*
 
 # Environment variables
 .env.*
+
+# Allow the example environment template to be committed
+!.env.example
