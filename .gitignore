@@ -218,3 +218,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Project-specific data protection
+data/raw/*
+data/interim/*
+data/processed/*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Power BI temporary files
+*.pbix
+
+# Environment variables
+.env.*
+
+# Allow the example environment template to be committed
+!.env.example
