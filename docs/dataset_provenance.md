@@ -35,7 +35,7 @@ The following nine CSV files were downloaded and preserved in `data/raw/`.
 | olist_products_dataset.csv | 32,951 |
 | olist_sellers_dataset.csv | 3,095 |
 | product_category_name_translation.csv | 71 |
-| **Total** | **1,554,872** |
+| **Total** | **1,550,922** |
 
 Row counts represent the original CSV records, including duplicate geolocation records.
 
