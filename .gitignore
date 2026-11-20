@@ -223,13 +223,13 @@ data/raw/*
 data/interim/*
 data/processed/*
 
+# Allow Git to preserve required data directories
+!data/*/.gitkeep
+
 # Database files
 *.db
 *.sqlite
 *.sqlite3
-
-# Power BI temporary files
-*.pbix
 
 # Environment variables
 .env.*

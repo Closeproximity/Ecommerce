@@ -146,6 +146,67 @@ FROM payments
 GROUP BY order_id;
 
 
+-- =========================================================
+-- 5. Order Review Summary
+-- One row per order
+-- =========================================================
+
+CREATE OR REPLACE VIEW vw_order_review_summary AS
+SELECT
+    order_id,
+    COUNT(*) AS review_count,
+    ROUND(AVG(review_score)::NUMERIC, 2) AS average_review_score,
+    MIN(review_score) AS minimum_review_score,
+    MAX(review_score) AS maximum_review_score,
+    MIN(review_creation_date::TIMESTAMP) AS first_review_created_at,
+    MAX(review_answer_timestamp::TIMESTAMP) AS last_review_answered_at
+FROM reviews
+GROUP BY order_id;
+
+CREATE OR REPLACE VIEW vw_order_item_detail AS
+SELECT
+    oi.order_id,
+    oi.order_item_id,
+    o.order_status,
+    o.order_purchase_timestamp::TIMESTAMP AS purchase_timestamp,
+
+    oi.product_id,
+    p.product_category_name,
+    COALESCE(
+        ct.product_category_name_english,
+        p.product_category_name
+    ) AS product_category_english,
+
+    oi.seller_id,
+    s.seller_city,
+    s.seller_state,
+
+    c.customer_id,
+    c.customer_city,
+    c.customer_state,
+
+    oi.price,
+    oi.freight_value,
+    oi.price + oi.freight_value AS total_item_value
+
+FROM order_items oi
+LEFT JOIN orders o
+    ON oi.order_id = o.order_id
+LEFT JOIN products p
+    ON oi.product_id = p.product_id
+LEFT JOIN category_translation ct
+    ON p.product_category_name = ct.product_category_name
+LEFT JOIN sellers s
+    ON oi.seller_id = s.seller_id
+LEFT JOIN customers c
+    ON o.customer_id = c.customer_id;
+
+
+-- =========================================================
+-- 6. Consolidated Order Analytics
+-- One row per order
+-- =========================================================
+
 CREATE OR REPLACE VIEW vw_order_analytics AS
 SELECT
     -- Order and customer information
@@ -178,9 +239,20 @@ SELECT
     p.max_installments,
     p.payment_methods,
 
-    -- Data availability indicators
+    -- Existing data availability indicators
     (i.order_id IS NOT NULL) AS has_item_records,
-    (p.order_id IS NOT NULL) AS has_payment_records
+    (p.order_id IS NOT NULL) AS has_payment_records,
+
+    -- Review metrics
+    COALESCE(r.review_count, 0::BIGINT) AS review_count,
+    r.average_review_score,
+    r.minimum_review_score,
+    r.maximum_review_score,
+    r.first_review_created_at,
+    r.last_review_answered_at,
+
+    -- Review availability indicator
+    (r.order_id IS NOT NULL) AS has_review_records
 
 FROM vw_order_delivery_performance d
 
@@ -188,4 +260,7 @@ LEFT JOIN vw_order_item_summary i
     ON d.order_id = i.order_id
 
 LEFT JOIN vw_order_payment_summary p
-    ON d.order_id = p.order_id;
+    ON d.order_id = p.order_id
+
+LEFT JOIN vw_order_review_summary r
+    ON d.order_id = r.order_id;
