@@ -29,8 +29,8 @@ Availability classifications:
 | Customer location — state | Available | customers | `customer_state` | Customer's recorded state |
 | Seller location — city | Available | sellers | `seller_city` | Seller's recorded city |
 | Seller location — state | Available | sellers | `seller_state` | Seller's recorded state |
-| Delivery destination coordinates | Partial | geolocation | `geolocation_lat`, `geolocation_lng` | ZIP-prefix based coordinates; multiple coordinates may exist for a prefix |
-| Actual delivery distance | Missing | — | — | No direct distance field |
+| Geographic coordinates for distance approximation | Partial | geolocation | `geolocation_lat`, `geolocation_lng` | ZIP-prefix-based coordinates only; multiple coordinates may exist for a prefix. These do not establish actual shipment routes or delivery distance |
+| Actual delivery distance | Missing | — | — | No direct distance field or verified route information |
 | Freight fee | Available | order_items | `freight_value` | Freight amount recorded per order item |
 | Customer rating | Available | order_reviews | `review_score` | Multiple reviews may exist for an order |
 
@@ -39,8 +39,8 @@ Availability classifications:
 1. Customer and seller locations must be treated as separate geographical dimensions.
 2. Customer location must not automatically be interpreted as a verified delivery destination.
 3. Seller location must not automatically be interpreted as the dispatch warehouse location.
-4. Geolocation data is associated with ZIP prefixes and may contain multiple coordinate records for a prefix.
-5. Carrier identity, cancellation reason and actual delivery distance must not be fabricated.
+4. Geolocation data is associated with ZIP prefixes and may contain multiple coordinate records for a prefix. These coordinates provide partial geographic information only and must not be treated as verified shipment origin/destination points or actual route distances.
+5. Carrier identity, cancellation reason and actual delivery distance must not be fabricated. Geographic information for distance approximation is partial at best because only ZIP-prefix-based coordinates are available.
 6. Freight fee is recorded at order-item level. Aggregate it carefully when calculating order-level totals.
 7. Product category availability is partial. Missing category values should be retained or explicitly grouped as unknown during analysis.
 8. Customer ratings require a documented rule when multiple reviews are associated with an order.
@@ -56,7 +56,7 @@ The available fields support:
 - Freight cost analysis.
 - Customer rating comparisons against delivery outcomes.
 
-The dataset does not support direct carrier-level performance comparisons, cancellation-reason analysis or actual delivery-distance analysis.
+The dataset does not support direct carrier-level performance comparisons, cancellation-reason analysis or actual delivery-distance analysis. ZIP-prefix-based coordinates may support limited geographic exploration, but they are insufficient to establish actual delivery routes or calculate verified delivery distances.
 
 ## 5. Source
 
