@@ -10,9 +10,11 @@
 | Stage | Orders |
 |---|---:|
 | Raw orders (`olist_orders_dataset.csv`) | 99,441 |
-| Orders flagged by at least one rule | *filled from `src/clean.py` output* |
+| Orders flagged by at least one data-quality rule (DQ-01 to DQ-07, DQ-09) | 2,186 (2.20%) |
 | Orders excluded | **0** |
 | Orders in cleaned dataset (`data/interim/orders_clean.csv`) | 99,441 |
+
+Long deliveries (DQ-08, 4,896 orders) are flagged separately and not counted above, because they are real late orders, not data errors.
 
 **Policy: flag, don't delete.** No record is removed. Every rule adds a True/False flag column, so each KPI owner (M3, M6) can decide which flags to exclude for their KPI and must report that exclusion as part of the denominator.
 
