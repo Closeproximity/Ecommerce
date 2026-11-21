@@ -57,24 +57,27 @@ eligible["delivery_status"] = eligible[
 ].apply(
     lambda delay: "Late" if delay > 0
     else "Early" if delay < 0
-    else "On Time"
+    else "On-date"
 )
 
 # Calculate summary metrics
 total_delivered = len(delivered)
 eligible_count = len(eligible)
 
-on_time_count = (
-    eligible["delivery_status"] == "On Time"
-).sum()
-
 early_count = (
     eligible["delivery_status"] == "Early"
+).sum()
+
+on_date_count = (
+    eligible["delivery_status"] == "On-date"
 ).sum()
 
 late_count = (
     eligible["delivery_status"] == "Late"
 ).sum()
+
+# On-time includes both early and on-date deliveries
+on_time_count = early_count + on_date_count
 
 print("\nDELIVERY PERFORMANCE SUMMARY")
 print("-" * 45)
@@ -101,7 +104,8 @@ print("\nDELIVERY CLASSIFICATION")
 print("-" * 45)
 
 print("Early deliveries:", early_count)
-print("On-time deliveries:", on_time_count)
+print("On-date deliveries:", on_date_count)
+print("On-time deliveries (early + on-date):", on_time_count)
 print("Late deliveries:", late_count)
 
 print(
