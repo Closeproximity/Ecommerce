@@ -270,13 +270,15 @@ psql -h localhost -U delivery_user -d delivery_db \
     -v ON_ERROR_STOP=1 -f sql/views.sql
 ```
 
-The script creates four analytical views:
+The script creates six analytical views:
 
 | View | Purpose |
 |---|---|
 | vw_order_delivery_performance | Delivery duration, delay, timing classification, and on-time status |
 | vw_order_item_summary | Order-level item counts and product/freight totals |
 | vw_order_payment_summary | Order-level payment records, methods, and payment totals |
+| vw_order_review_summary | One row per order: review count, average/minimum/maximum score, first review created and last review answered |
+| vw_order_item_detail | One row per order item: product category (English name when available), seller and customer location, price, freight and total item value |
 | vw_order_analytics | Consolidated order-level analytical dataset |
 
 Item and payment records are aggregated separately before joining to orders. This prevents row multiplication when an order contains multiple items and payment records.
