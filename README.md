@@ -372,6 +372,16 @@ Important findings from initial data profiling:
 
 Missing information is preserved and documented rather than fabricated.
 
+### Reproducing the data-quality work (M2)
+
+```bash
+python src/verify_raw.py   # raw files match the audited SHA-256 fingerprints
+python src/clean.py        # creates data/interim/orders_clean.csv + docs/cleaning_validation.md
+```
+
+- Rules DQ-01 to DQ-13: `docs/data_quality_audit.md`
+- Validation evidence (row reconciliation, rule counts, IQR calculation): `docs/cleaning_validation.md`
+
 ## 14. Analytical Methodology
 
 - Preserve original source data.
