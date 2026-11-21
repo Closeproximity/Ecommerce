@@ -11,6 +11,7 @@
 | `notebooks/00_data_audit.ipynb` | How each problem was found (12 checks with findings) |
 | `src/clean.py` | Every rule below implemented as a column |
 | `docs/cleaning_validation.md` | Generated on every run: row reconciliation, order-level count for every rule, exact IQR calculation |
+| `docs/orders_clean_schema.md` | Generated on every run: every column of the cleaned dataset, its meaning and rule |
 | `docs/raw_file_checksums.csv` + `src/verify_raw.py` | Raw files are byte-for-byte the audited versions |
 
 ## 1. Before / After Summary
@@ -94,7 +95,16 @@ Source: `docs/cleaning_validation.md` section 4. The limit is recalculated from 
 
 **Facts:** 547 orders have more than one review (543 have 2, 4 have 3 or more), and in **202 of them the scores disagree**, so the rule changes the result. 814 `review_id`s are shared by several orders (one review left for orders bought together). 768 orders have no review.
 
-**Proposed rule (status: awaiting M3 confirmation):** use the **latest review per order**, the one with the newest `review_answer_timestamp`. Ties are broken by `review_creation_date`, then `review_id`, so the result is identical on every run.
+**Proposed rule (status: PROPOSED, awaiting M3 confirmation):** use the **latest review per order**.
+
+How "latest" is decided, step by step:
+
+1. Use `review_answer_timestamp`.
+2. **Fallback:** if `review_answer_timestamp` is missing, use `review_creation_date` instead.
+3. If a review has **neither** date, it is treated as the **oldest** review, so it is chosen only when the order has no dated review. (Pandas would otherwise sort missing dates last and wrongly pick them as "latest".)
+4. Ties are broken by `review_creation_date`, then `review_id`, so the result is identical on every run.
+
+The number of reviews that needed the fallback is reported in `docs/cleaning_validation.md` section 5.
 
 **Why latest:** it reflects the customer's final opinion after the delivery outcome is known, and it keeps exactly one score per order, so no order is counted twice in rating KPIs.
 
@@ -115,11 +125,14 @@ From the project root, with the virtual environment active:
 
 ```bash
 python src/verify_raw.py   # 1. raw files match the audited fingerprints (all OK, exit code 0)
-python src/clean.py        # 2. writes data/interim/orders_clean.csv and docs/cleaning_validation.md
+python src/clean.py        # 2. writes data/interim/orders_clean.csv, docs/cleaning_validation.md, docs/orders_clean_schema.md
 ```
 
 - All paths are relative to the project root and use `/`, so the same commands work on Windows, macOS and Linux.
+- `verify_raw.py` checks that the manifest lists each of the **9 expected Olist files exactly once** (nothing missing, duplicated or extra), then checks size and SHA-256 of each.
+- `clean.py` runs the same check first and **stops without cleaning** if it fails, so cleaning always uses the audited dataset.
 - `clean.py` stops with an error if any order is lost, added or duplicated.
+- `clean.py` also writes `docs/orders_clean_schema.md`, and stops if any output column is undocumented.
 - If `verify_raw.py` reports a mismatch, re-download the dataset from Kaggle. Run `python src/verify_raw.py --update` only if the team agrees to move to a new dataset version.
 
 ## 8. Notes and Limitations

@@ -9,8 +9,13 @@ Policy: flag, don't delete.
 - No order is removed. Every rule adds a column, so KPI owners (M3, M6)
   decide what to exclude for each KPI.
 
-Every run also writes docs/cleaning_validation.md: the evidence that no order
-was lost or duplicated, the count for every rule, and the exact IQR calculation.
+The script first runs verify_raw.py and STOPS if any raw file differs from
+the audited version, so cleaning always uses the audited dataset.
+
+Every run also writes:
+- docs/cleaning_validation.md: evidence that no order was lost or duplicated,
+  the count for every rule, and the exact IQR calculation
+- docs/orders_clean_schema.md: every column of the cleaned dataset, explained
 
 How to run (from the project root, with .venv active):
     python src/clean.py
@@ -22,7 +27,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # make src/ importable from any working folder
-from verify_raw import verify_files                       # noqa: E402  (raw-file fingerprint check)
+from verify_raw import all_ok, verify_files               # noqa: E402  (raw-file fingerprint check)
 
 # ------------------------------------------------------------------
 # 1. Paths and settings
@@ -32,6 +37,7 @@ RAW = ROOT / "data" / "raw"                      # original files: read only
 INTERIM = ROOT / "data" / "interim"              # cleaned output goes here
 OUTPUT_FILE = INTERIM / "orders_clean.csv"
 REPORT_FILE = ROOT / "docs" / "cleaning_validation.md"
+SCHEMA_FILE = ROOT / "docs" / "orders_clean_schema.md"
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"                # one format for every date column
 DATE_COLS = [
@@ -60,6 +66,43 @@ RULES = [
 ]
 # Rules that describe a data error. DQ-08, DQ-10, DQ-11, DQ-12, DQ-13 describe real situations, not errors.
 QUALITY_ISSUE_RULES = ["DQ-01", "DQ-02", "DQ-03", "DQ-04", "DQ-05", "DQ-06", "DQ-07", "DQ-09"]
+
+# Every column of orders_clean.csv: (type, meaning, rule). The script stops if a column is undocumented.
+SCHEMA = {
+    "order_id": ("text", "Unique order identifier (one row per order)", ""),
+    "customer_id": ("text", "Customer key for this order (links to customers)", ""),
+    "order_status": ("text", "Order status, lowercase (delivered, shipped, canceled, ...)", ""),
+    "order_purchase_timestamp": ("datetime", "(1) Customer placed the order", ""),
+    "order_approved_at": ("datetime", "(2) Payment approved; empty if never approved", ""),
+    "order_delivered_carrier_date": ("datetime", "(3) Handed to the courier; empty if never dispatched", ""),
+    "order_delivered_customer_date": ("datetime", "(4) Delivered to the customer; empty if never delivered", ""),
+    "order_estimated_delivery_date": ("datetime", "Delivery date promised to the customer", ""),
+    "flag_delivered_no_delivery_date": ("bool", "Delivered but no customer delivery date", "DQ-01"),
+    "flag_canceled_with_delivery_date": ("bool", "Canceled but has a customer delivery date", "DQ-02"),
+    "flag_delivered_no_carrier_date": ("bool", "Delivered but no carrier date", "DQ-03"),
+    "flag_delivered_no_approval_date": ("bool", "Delivered but no approval date", "DQ-04"),
+    "flag_carrier_before_purchase": ("bool", "Carrier date earlier than purchase date", "DQ-05"),
+    "flag_carrier_before_approval": ("bool", "Carrier date earlier than approval date", "DQ-06"),
+    "flag_delivered_before_carrier": ("bool", "Customer delivery earlier than carrier date", "DQ-07"),
+    "delivery_days": ("float", "Days from purchase to customer delivery (helper for EDA; KPI definition owned by M3/M6)", ""),
+    "processing_days": ("float", "Days from purchase to carrier handover (helper for EDA)", ""),
+    "flag_long_delivery": ("bool", "Delivered order with delivery_days above the IQR upper limit (kept)", "DQ-08"),
+    "item_count": ("int", "Number of items in the order (0 = no items)", "DQ-09"),
+    "items_unknown_category": ("int", "Items whose product has no category", "DQ-11"),
+    "items_untranslated_category": ("int", "Items whose category has no English name", "DQ-12"),
+    "items_zero_freight": ("int", "Items with freight_value = 0", "DQ-13"),
+    "flag_no_items": ("bool", "Order has no items", "DQ-09"),
+    "flag_item_unknown_category": ("bool", "At least one item has no product category", "DQ-11"),
+    "flag_item_untranslated_category": ("bool", "At least one item's category has no English name", "DQ-12"),
+    "flag_item_zero_freight": ("bool", "At least one item has zero freight (kept)", "DQ-13"),
+    "review_count": ("int", "Number of reviews for the order (0 = no review)", "DQ-10"),
+    "review_score_latest": ("float", "Score of the latest review (PROPOSED rule, awaiting M3); empty if no review", "DQ-10"),
+    "review_score_mean": ("float", "Average review score (alternative rule); empty if no review", "DQ-10"),
+    "flag_multiple_reviews": ("bool", "Order has more than one review", "DQ-10"),
+    "customer_city": ("text", "Customer city, lowercase", ""),
+    "customer_state": ("text", "Customer state, 2-letter uppercase code", ""),
+    "flag_any_quality_issue": ("bool", "True if any data-error rule is True (DQ-01 to DQ-07, DQ-09)", "summary"),
+}
 
 
 # ------------------------------------------------------------------
@@ -186,15 +229,22 @@ def add_item_flags(df, items, products, translation):
 def add_review_columns(df, reviews):
     """Add review_count, review_score_latest and review_score_mean.
 
-    Proposed rule (to be confirmed by M3): use the LATEST review per order,
-    i.e. the one with the newest review_answer_timestamp (ties broken by
-    review_creation_date, then review_id, so the result is always the same).
+    PROPOSED rule (awaiting M3 confirmation): use the LATEST review per order.
+    "Latest" is decided by review_sort_time:
+      1. review_answer_timestamp, or
+      2. review_creation_date if the answer timestamp is missing (fallback).
+    A review with neither date is treated as the OLDEST, so it is only chosen
+    when the order has no dated review. Ties are broken by review_creation_date,
+    then review_id, so the result is identical on every run.
     review_score_mean is kept so M3 can switch rules without re-running anything.
     """
     rv = reviews.copy()
     for col in ["review_creation_date", "review_answer_timestamp"]:
         rv[col] = pd.to_datetime(rv[col], format=DATE_FORMAT, errors="coerce")
-    rv = rv.sort_values(["order_id", "review_answer_timestamp", "review_creation_date", "review_id"])
+    rv["review_sort_time"] = rv["review_answer_timestamp"].fillna(rv["review_creation_date"])  # fallback rule
+    # na_position="first": missing dates sort as oldest, so keep="last" never prefers them over a dated review
+    rv = rv.sort_values(["order_id", "review_sort_time", "review_creation_date", "review_id"],
+                        na_position="first")
 
     latest = rv.drop_duplicates("order_id", keep="last").set_index("order_id")["review_score"]
     counts = rv.groupby("order_id").size()
@@ -209,6 +259,8 @@ def add_review_columns(df, reviews):
     review_stats = {
         "count_distribution": df["review_count"].clip(upper=3).value_counts().sort_index().to_dict(),
         "multi_disagree": int((spread > 0).sum()),
+        "answer_missing": int(rv["review_answer_timestamp"].isna().sum()),
+        "both_missing": int(rv["review_sort_time"].isna().sum()),
     }
     return df, review_stats
 
@@ -259,6 +311,8 @@ def write_report(raw_results, checks, df, iqr, src, rev):
         "",
         "## 1. Raw data integrity (`python src/verify_raw.py`)",
         "",
+        "Cleaning only runs when all 9 expected files are listed once in the manifest and match it.",
+        "",
         "| File | Status |", "|---|---|",
         *[f"| `{f}` | {s} |" for f, s in raw_results],
         "",
@@ -307,6 +361,12 @@ def write_report(raw_results, checks, df, iqr, src, rev):
         "",
         f"Orders with several reviews whose scores disagree: {rev['multi_disagree']:,}",
         "",
+        "Latest-review ordering (proposed rule, awaiting M3): `review_answer_timestamp`, falling back to "
+        "`review_creation_date` when it is missing; reviews with neither date sort as oldest.",
+        "",
+        f"- Reviews with missing `review_answer_timestamp` (fallback used): {rev['answer_missing']:,}",
+        f"- Reviews with neither date (treated as oldest): {rev['both_missing']:,}",
+        "",
         "Columns provided: `review_count`, `review_score_latest` (proposed rule), `review_score_mean` (alternative). "
         "See `docs/data_quality_audit.md`, section 6.",
         "",
@@ -314,13 +374,60 @@ def write_report(raw_results, checks, df, iqr, src, rev):
     REPORT_FILE.write_text("\n".join(lines), encoding="utf-8")
 
 
+def write_schema(df):
+    """Write docs/orders_clean_schema.md from SCHEMA, with true/false counts for every flag."""
+    undocumented = [c for c in df.columns if c not in SCHEMA]
+    missing = [c for c in SCHEMA if c not in df.columns]
+    assert not undocumented and not missing, f"Schema out of date: new={undocumented}, gone={missing}"
+
+    lines = [
+        "# `orders_clean.csv` Schema",
+        "",
+        "*Generated automatically by `python src/clean.py`. Do not edit by hand.*",
+        "",
+        f"- **File:** `data/interim/orders_clean.csv` (not committed; recreate with `python src/clean.py`)",
+        f"- **Grain:** one row per order ({len(df):,} rows, {len(df.columns)} columns)",
+        "- **Key:** `order_id` (unique)",
+        "- **Policy:** no rows removed; filter with the `flag_*` columns and state the exclusion in each KPI",
+        "- **Rules:** see `docs/data_quality_audit.md`",
+        "",
+        "| # | Column | Type | Meaning | Rule | Orders where True |",
+        "|---:|---|---|---|---|---:|",
+    ]
+    for i, col in enumerate(df.columns, 1):
+        typ, meaning, rule = SCHEMA[col]
+        true_count = f"{int(df[col].sum()):,}" if typ == "bool" else ""
+        lines.append(f"| {i} | `{col}` | {typ} | {meaning} | {rule} | {true_count} |")
+    lines += [
+        "",
+        "## Suggested filters",
+        "",
+        "| Use | Keep orders where |",
+        "|---|---|",
+        "| Delivery time, on-time, delay | `order_status == 'delivered'` and not `flag_delivered_no_delivery_date` "
+        "(optionally exclude `flag_delivered_before_carrier`) |",
+        "| Processing time | `order_delivered_carrier_date` present, not `flag_carrier_before_purchase`; "
+        "decide on `flag_carrier_before_approval` |",
+        "| Ratings | `review_count > 0`; use `review_score_latest` or `review_score_mean` once M3 confirms |",
+        "| Price / freight | `item_count > 0` |",
+        "| Category analysis | label orders with `flag_item_unknown_category` as `unknown`, never drop them |",
+        "",
+    ]
+    SCHEMA_FILE.write_text("\n".join(lines), encoding="utf-8")
+
+
 # ------------------------------------------------------------------
 # 9. Run
 # ------------------------------------------------------------------
 def main():
+    # Stop immediately if the raw data is not the audited version
     raw_results = verify_files()
-    if not all(status == "OK" for _, status in raw_results):
-        print("WARNING: raw files differ from the audited version (see report). Continuing.")
+    if not all_ok(raw_results):
+        for file, status in raw_results:
+            if status != "OK":
+                print(f"{status:22} {file}")
+        sys.exit("STOPPED: raw files do not match docs/raw_file_checksums.csv. "
+                 "Run `python src/verify_raw.py` for details. Nothing was cleaned.")
 
     tables = load_raw()
     df, iqr, src, rev = build_clean(tables)
@@ -332,6 +439,7 @@ def main():
     saved = pd.read_csv(OUTPUT_FILE, usecols=["order_id"])
     checks = reconcile(tables["orders"], saved)
     write_report(raw_results, checks, df, iqr, src, rev)
+    write_schema(df)
 
     failed = [name for name, _, ok in checks if ok is False]
     assert not failed, f"Validation failed: {failed}"
@@ -341,6 +449,7 @@ def main():
     print(f"IQR upper limit: {iqr['upper']:.2f} days ({iqr['above']:,} orders above)")
     print(f"Saved: {OUTPUT_FILE.relative_to(ROOT).as_posix()}")
     print(f"Report: {REPORT_FILE.relative_to(ROOT).as_posix()}")
+    print(f"Schema: {SCHEMA_FILE.relative_to(ROOT).as_posix()}")
 
 
 if __name__ == "__main__":

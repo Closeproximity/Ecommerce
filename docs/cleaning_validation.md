@@ -4,6 +4,8 @@
 
 ## 1. Raw data integrity (`python src/verify_raw.py`)
 
+Cleaning only runs when all 9 expected files are listed once in the manifest and match it.
+
 | File | Status |
 |---|---|
 | `data/raw/olist_customers_dataset.csv` | OK |
@@ -80,5 +82,10 @@ Source-level counts behind the item/product rules:
 | 3 or more | 4 |
 
 Orders with several reviews whose scores disagree: 202
+
+Latest-review ordering (proposed rule, awaiting M3): `review_answer_timestamp`, falling back to `review_creation_date` when it is missing; reviews with neither date sort as oldest.
+
+- Reviews with missing `review_answer_timestamp` (fallback used): 0
+- Reviews with neither date (treated as oldest): 0
 
 Columns provided: `review_count`, `review_score_latest` (proposed rule), `review_score_mean` (alternative). See `docs/data_quality_audit.md`, section 6.
