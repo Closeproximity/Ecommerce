@@ -131,7 +131,7 @@ python src/clean.py        # 2. writes data/interim/orders_clean.csv, docs/clean
 - All paths are relative to the project root and use `/`, so the same commands work on Windows, macOS and Linux.
 - `verify_raw.py` checks that the manifest lists each of the **9 expected Olist files exactly once** (nothing missing, duplicated or extra), then checks size and SHA-256 of each.
 - `clean.py` runs the same check first and **stops without cleaning** if it fails, so cleaning always uses the audited dataset.
-- `clean.py` stops with an error if any order is lost, added or duplicated.
+- `clean.py` writes the cleaned CSV to a **temporary file first**, re-reads and reconciles it, and only then publishes `data/interim/orders_clean.csv` and the reports. If any order is lost, added or duplicated, it stops and the previously published files stay unchanged.
 - `clean.py` also writes `docs/orders_clean_schema.md`, and stops if any output column is undocumented.
 - If `verify_raw.py` reports a mismatch, re-download the dataset from Kaggle. Run `python src/verify_raw.py --update` only if the team agrees to move to a new dataset version.
 

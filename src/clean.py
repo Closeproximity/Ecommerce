@@ -12,7 +12,12 @@ Policy: flag, don't delete.
 The script first runs verify_raw.py and STOPS if any raw file differs from
 the audited version, so cleaning always uses the audited dataset.
 
-Every run also writes:
+The cleaned CSV is first written to a temporary file, re-read and reconciled
+with the raw orders. Only if every check passes is it published as
+data/interim/orders_clean.csv, followed by the reports below. If a check fails,
+the previously published files are left unchanged.
+
+Every successful run also writes:
 - docs/cleaning_validation.md: evidence that no order was lost or duplicated,
   the count for every rule, and the exact IQR calculation
 - docs/orders_clean_schema.md: every column of the cleaned dataset, explained
@@ -432,17 +437,34 @@ def main():
     tables = load_raw()
     df, iqr, src, rev = build_clean(tables)
 
-    INTERIM.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUTPUT_FILE, index=False)
+    # Check the schema BEFORE writing anything, so an undocumented column stops the run early
+    undocumented = [c for c in df.columns if c not in SCHEMA]
+    missing = [c for c in SCHEMA if c not in df.columns]
+    if undocumented or missing:
+        sys.exit(f"STOPPED: schema out of date (new={undocumented}, gone={missing}). Nothing was published.")
 
-    # Re-read the saved file so the evidence describes what is really on disk
-    saved = pd.read_csv(OUTPUT_FILE, usecols=["order_id"])
-    checks = reconcile(tables["orders"], saved)
+    # 1. Write to a TEMPORARY file first; the published file is untouched until validation passes
+    INTERIM.mkdir(parents=True, exist_ok=True)
+    temp_file = OUTPUT_FILE.with_name(OUTPUT_FILE.stem + ".tmp.csv")
+    try:
+        df.to_csv(temp_file, index=False)
+
+        # 2. Validate what is really on disk: re-read the temporary file and reconcile it with raw
+        saved = pd.read_csv(temp_file, usecols=["order_id"])
+        checks = reconcile(tables["orders"], saved)
+        failed = [name for name, _, ok in checks if ok is False]
+        if failed:
+            sys.exit(f"STOPPED: validation failed {failed}. The previous published files were left unchanged.")
+
+        # 3. Publish: replace the final CSV in one step (no half-written file is ever visible)
+        temp_file.replace(OUTPUT_FILE)
+    finally:
+        if temp_file.exists():      # failure or crash: remove the temporary file
+            temp_file.unlink()
+
+    # 4. Only after the CSV is published, write the success reports
     write_report(raw_results, checks, df, iqr, src, rev)
     write_schema(df)
-
-    failed = [name for name, _, ok in checks if ok is False]
-    assert not failed, f"Validation failed: {failed}"
 
     print(f"Rows: {len(tables['orders']):,} raw -> {len(saved):,} saved | lost 0 | duplicated 0")
     print(f"Orders with any quality issue: {int(df['flag_any_quality_issue'].sum()):,}")
