@@ -135,6 +135,13 @@ python src/clean.py        # 2. writes data/interim/orders_clean.csv, docs/clean
 - `clean.py` also writes `docs/orders_clean_schema.md`, and stops if any output column is undocumented.
 - If `verify_raw.py` reports a mismatch, re-download the dataset from Kaggle. Run `python src/verify_raw.py --update` only if the team agrees to move to a new dataset version.
 
+## Version History
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.0 | 21 Nov 2026 | First audit: rules DQ-01 to DQ-10, `clean.py`, cleaned dataset, EDA charts |
+| 1.1 | 22 Nov 2026 | After M1 review: relative-path checksums and `verify_raw.py`; DQ-11 to DQ-13 implemented; validation report; review fallback rule; schema doc; cleaning stops if raw data or validation fails; output validated in a temporary file before publishing |
+| 1.2 | pending | Rating rule (DQ-10) to change from PROPOSED to CONFIRMED once M3 decides |
 ## 8. Notes and Limitations
 
 - **Raw data unchanged:** SHA-256 fingerprints and sizes of all 9 raw files are stored in `docs/raw_file_checksums.csv`.
