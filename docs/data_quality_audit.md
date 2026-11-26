@@ -95,7 +95,7 @@ Source: `docs/cleaning_validation.md` section 4. The limit is recalculated from 
 
 **Facts:** 547 orders have more than one review (543 have 2, 4 have 3 or more), and in **202 of them the scores disagree**, so the rule changes the result. 814 `review_id`s are shared by several orders (one review left for orders bought together). 768 orders have no review.
 
-**Proposed rule (status: PROPOSED, awaiting M3 confirmation):** use the **latest review per order**.
+**Rule (status: CONFIRMED by M3 on 26 Nov 2026, see `docs/kpi_definitions_m3.md`):** use the **latest review per order**.
 
 How "latest" is decided, step by step:
 
@@ -113,11 +113,11 @@ The number of reviews that needed the fallback is reported in `docs/cleaning_val
 | Column | Meaning |
 |---|---|
 | `review_count` | Number of reviews for the order (0 = no review) |
-| `review_score_latest` | Score under the proposed rule; empty if no review |
+| `review_score_latest` | Score under the confirmed rule; empty if no review |
 | `review_score_mean` | Average score, if M3 prefers the mean |
 | `flag_multiple_reviews` | `True` when `review_count` > 1 |
 
-A shared `review_id` gives each linked order the same score. Orders with no review are excluded from rating KPIs only, and that count must be stated with the KPI. **M3 to confirm or change the rule; the decision will be recorded in `docs/decisions_log.md`.**
+A shared `review_id` gives each linked order the same score. Orders with no review are excluded from rating KPIs only, and that count must be stated with the KPI. **Confirmed by M3 (Ali) on 26 Nov 2026.** `review_score_mean` is kept for M3's sensitivity check.
 
 ## 7. Reproduce and Verify (any OS)
 
@@ -141,7 +141,8 @@ python src/clean.py        # 2. writes data/interim/orders_clean.csv, docs/clean
 |---|---|---|
 | 1.0 | 21 Nov 2026 | First audit: rules DQ-01 to DQ-10, `clean.py`, cleaned dataset, EDA charts |
 | 1.1 | 22 Nov 2026 | After M1 review: relative-path checksums and `verify_raw.py`; DQ-11 to DQ-13 implemented; validation report; review fallback rule; schema doc; cleaning stops if raw data or validation fails; output validated in a temporary file before publishing |
-| 1.2 | pending | Rating rule (DQ-10) to change from PROPOSED to CONFIRMED once M3 decides |
+| 1.2 | 26 Nov 2026 | DQ-10 rating rule confirmed by M3: latest review per order (`review_score_latest`); `review_score_mean` kept for sensitivity checks |
+
 ## 8. Notes and Limitations
 
 - **Raw data unchanged:** SHA-256 fingerprints and sizes of all 9 raw files are stored in `docs/raw_file_checksums.csv`.

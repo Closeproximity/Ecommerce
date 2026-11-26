@@ -37,7 +37,7 @@
 | 25 | `flag_item_untranslated_category` | bool | At least one item's category has no English name | DQ-12 | 22 |
 | 26 | `flag_item_zero_freight` | bool | At least one item has zero freight (kept) | DQ-13 | 339 |
 | 27 | `review_count` | int | Number of reviews for the order (0 = no review) | DQ-10 |  |
-| 28 | `review_score_latest` | float | Score of the latest review (PROPOSED rule, awaiting M3); empty if no review | DQ-10 |  |
+| 28 | `review_score_latest` | float | Score of the latest review (rule confirmed by M3); empty if no review | DQ-10 |  |
 | 29 | `review_score_mean` | float | Average review score (alternative rule); empty if no review | DQ-10 |  |
 | 30 | `flag_multiple_reviews` | bool | Order has more than one review | DQ-10 | 547 |
 | 31 | `customer_city` | text | Customer city, lowercase |  |  |

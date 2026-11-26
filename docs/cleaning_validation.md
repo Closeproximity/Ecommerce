@@ -83,7 +83,7 @@ Source-level counts behind the item/product rules:
 
 Orders with several reviews whose scores disagree: 202
 
-Latest-review ordering (proposed rule, awaiting M3): `review_answer_timestamp`, falling back to `review_creation_date` when it is missing; reviews with neither date sort as oldest.
+Latest-review ordering (rule confirmed by M3): `review_answer_timestamp`, falling back to `review_creation_date` when it is missing; reviews with neither date sort as oldest.
 
 - Reviews with missing `review_answer_timestamp` (fallback used): 0
 - Reviews with neither date (treated as oldest): 0
