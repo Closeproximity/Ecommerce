@@ -88,4 +88,4 @@ Latest-review ordering (rule confirmed by M3): `review_answer_timestamp`, fallin
 - Reviews with missing `review_answer_timestamp` (fallback used): 0
 - Reviews with neither date (treated as oldest): 0
 
-Columns provided: `review_count`, `review_score_latest` (proposed rule), `review_score_mean` (alternative). See `docs/data_quality_audit.md`, section 6.
+Columns provided: `review_count`, `review_score_latest` (confirmed rule), `review_score_mean` (alternative). See `docs/data_quality_audit.md`, section 6.

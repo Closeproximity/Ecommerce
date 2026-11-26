@@ -50,6 +50,6 @@
 |---|---|
 | Delivery time, on-time, delay | `order_status == 'delivered'` and not `flag_delivered_no_delivery_date` (optionally exclude `flag_delivered_before_carrier`) |
 | Processing time | `order_delivered_carrier_date` present, not `flag_carrier_before_purchase`; decide on `flag_carrier_before_approval` |
-| Ratings | `review_count > 0`; use `review_score_latest` or `review_score_mean` once M3 confirms |
+| Ratings | `review_count > 0`; use `review_score_latest` (confirmed by M3); `review_score_mean` for sensitivity checks |
 | Price / freight | `item_count > 0` |
 | Category analysis | label orders with `flag_item_unknown_category` as `unknown`, never drop them |

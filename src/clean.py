@@ -234,7 +234,7 @@ def add_item_flags(df, items, products, translation):
 def add_review_columns(df, reviews):
     """Add review_count, review_score_latest and review_score_mean.
 
-    PROPOSED rule (awaiting M3 confirmation): use the LATEST review per order.
+    Rule (confirmed by M3 on 26 Nov 2026): use the LATEST review per order.
     "Latest" is decided by review_sort_time:
       1. review_answer_timestamp, or
       2. review_creation_date if the answer timestamp is missing (fallback).
@@ -372,7 +372,7 @@ def write_report(raw_results, checks, df, iqr, src, rev):
         f"- Reviews with missing `review_answer_timestamp` (fallback used): {rev['answer_missing']:,}",
         f"- Reviews with neither date (treated as oldest): {rev['both_missing']:,}",
         "",
-        "Columns provided: `review_count`, `review_score_latest` (proposed rule), `review_score_mean` (alternative). "
+        "Columns provided: `review_count`, `review_score_latest` (confirmed rule), `review_score_mean` (alternative). "
         "See `docs/data_quality_audit.md`, section 6.",
         "",
     ]
@@ -413,7 +413,7 @@ def write_schema(df):
         "(optionally exclude `flag_delivered_before_carrier`) |",
         "| Processing time | `order_delivered_carrier_date` present, not `flag_carrier_before_purchase`; "
         "decide on `flag_carrier_before_approval` |",
-        "| Ratings | `review_count > 0`; use `review_score_latest` or `review_score_mean` once M3 confirms |",
+        "| Ratings | `review_count > 0`; use `review_score_latest` (confirmed by M3); `review_score_mean` for sensitivity checks |",
         "| Price / freight | `item_count > 0` |",
         "| Category analysis | label orders with `flag_item_unknown_category` as `unknown`, never drop them |",
         "",
