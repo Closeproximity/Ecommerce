@@ -24,8 +24,8 @@ Days are elapsed time: `(end − start) in seconds / 86,400`.
 - *Long deliveries (DQ-08) are kept in KPI 1*: they are real late orders, not errors. The mean is therefore sensitive to them; report the median as a supporting figure if needed.
 
 ## 2. Rating linkage rule (DQ-10) - DECISION: latest review
-
-M2 proposed the "latest review per order" rule and is waiting for M3 to confirm (`docs/data_quality_audit.md` section 6, version 1.2). **M3 decision: CONFIRMED - use the latest review.** Please record it in `docs/decisions_log.md`:
+M2 proposed the "latest review per order" rule (docs/data_quality_audit.md section 2). M3 decision: CONFIRMED - use the latest review. Decision text for docs/decisions_log.md:
+2). **M3 decision: CONFIRMED - use the latest review.** Please record it in `docs/decisions_log.md`:
 
 > DQ-10 rating rule: use the latest review per order (`review_score_latest`). Ordering exactly as in clean.py: `review_answer_timestamp`, falling back to `review_creation_date`; a review with no date counts as oldest; ties by `review_creation_date`, then `review_id`. Reason: it reflects the customer's final opinion once the delivery outcome is known and gives one whole-number score per order, so the 1-5 star distribution stays valid. Sensitivity: `review_score_mean` was also compared; the result is in section 4.
 
