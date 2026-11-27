@@ -75,3 +75,22 @@ Expected from `docs/delivery_kpi_methodology.md` as a sanity check: delivery dur
 ## 7. KPI limitations (draft paragraph for the report)
 
 Durations are elapsed days between recorded timestamps in Brazil local time, with no time-zone conversion, so very short intervals are approximate. Processing time depends on the carrier handover timestamp, which is impossible for 166 orders (before purchase) and missing for others; these are excluded and counted. The rating KPI covers only delivered orders that were reviewed (a self-selected group), uses the latest review where several exist, and shows association, not causation. Averages are sensitive to the 4.9% of long deliveries that were kept on purpose. The dataset covers 2016–2018 and has no carrier field, so carrier-level analysis is not possible.
+## Real-data cross-check
+
+Run on the real data (`python src/run_kpi_checks.py`). Full output: `reports/tables/kpi_crosscheck.csv`.
+
+| KPI | Python value (n) | SQL value (n) | Difference | Status |
+|---|---|---|---|---|
+| avg_delivery_duration_days | 12.558217 (96,470) | 12.558217 (96,470) | -1.07e-14 | match |
+| avg_processing_time_days | 3.234903 (96,311) | 3.234903 (96,311) | 3.29e-14 | match |
+| avg_rating_on_time | 4.290386 (89,443) | 4.290386 (89,443) | 0 | match |
+| avg_rating_late | 2.270491 (6,381) | 2.270491 (6,381) | 0 | match |
+| on_time_rate_pct | 93.226910 (96,470) | 93.226910 (96,470) | 0 | match |
+| cancellation_rate_pct | 0.628513 (99,441) | 0.628513 (99,441) | 0 | match |
+| avg_delay_days | -11.875889 (96,470) | -11.875889 (96,470) | 0 | match |
+
+All seven comparisons match, with identical denominators and differences within 1e-6.
+
+Rating KPI: 96,470 eligible delivered orders; 89,443 on-time and 6,381 late have a review; 646 delivered orders were excluded for missing reviews.
+
+KPIs 4-6 (on-time rate, cancellation rate, average delay) remain provisional until M6 confirms their definitions.
